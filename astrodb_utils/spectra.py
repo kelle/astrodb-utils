@@ -482,7 +482,7 @@ def check_spectrum_accessible(spectrum: str) -> bool:
     if internet:
         request_response = requests.head(spectrum)
         status_code = request_response.status_code  # The website is up if the status code is 200
-        if status_code != 200:
+        if status_code != 200:  # noqa: PLR2004
             msg = (
                 "The spectrum URL does not appear to be accessible: \n"
                 f"spectrum: {spectrum} \n"
