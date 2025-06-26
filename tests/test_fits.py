@@ -21,16 +21,16 @@ def test_add_missing_keywords(format):
 
     # most keywords should be None
     if format == "ivoa-spectrum-dm-1.2":
-        for keyword, comment in keywords:
+        for keyword, comment, _ in keywords:
             value = result.get(keyword)
             if keyword == "VOCLASS":
                 assert value.startswith("Spectrum-1.")
             else:
-                assert value is None
+                assert value is None or value == "UNKNOWN"
     elif format == "simple-spectrum":
-        for keyword, comment in keywords:
+        for keyword, comment, _ in keywords:
             value = result.get(keyword)
-            assert value is None
+            assert value is None or value == "UNKNOWN"
 
 
 def test_add_wavelength_keywords():
@@ -45,7 +45,7 @@ def test_add_wavelength_keywords():
 
 
 @pytest.mark.parametrize(
-    "input_date,obs_date",
+    ("input_date", "obs_date"),
     [
         ("2021/01/01", "2021-01-01"),
         ("1995-05-30", "1995-05-30"),
@@ -58,12 +58,11 @@ def test_add_obs_date(input_date, obs_date):
     assert header["DATE-OBS"] == obs_date
 
 
-@pytest.mark.parametrize("input_date,obs_date", [("20210101", "2021-01-01")])
+@pytest.mark.parametrize(("input_date","obs_date"), [("20210101", "2021-01-01")])
 def test_add_obs_date_fails(input_date, obs_date):
     header = add_missing_keywords()
-    with pytest.raises(ValueError) as error_message:
+    with pytest.raises(ValueError, match="Date could not be parsed by dateparser.parse"):
         add_observation_date(header, input_date)
-    assert "Date could not be parsed by dateparser.parse" in str(error_message.value)
 
 
 def test_check_header():

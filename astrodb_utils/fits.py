@@ -58,10 +58,18 @@ def add_missing_keywords(header=None, format="ivoa-spectrum-dm-1.2", keywords=No
 
     missing_keywords = []
     # Loop through the original header and add keywords with blank values to the new header
-    for keyword, comment in keywords:
+    for keyword, comment, type in keywords:
         value = header.get(keyword)
         if value is None:
-            header.set(keyword, None, comment)
+            if type is str:
+                header.set(keyword, "UNKNOWN", comment)
+            elif type is float:
+                header.set(keyword, None, comment)
+            else:
+                raise ValueError(
+                    f"Unsupported type {type} for keyword {keyword}. "
+                    "Supported types are str and float."
+                )
             missing_keywords.append((keyword, comment))
 
     if format == "ivoa-spectrum-dm-1.2":
@@ -79,6 +87,10 @@ def add_missing_keywords(header=None, format="ivoa-spectrum-dm-1.2", keywords=No
     )
 
     for keyword, comment in missing_keywords:
+        logger.warning(
+            f"Keyword {keyword} is missing from the header. "
+            "You can add it with the following command:"
+        )
         print(f"header.set('{keyword}', \"<value>\")")  # {comment}")
 
     return header
@@ -204,7 +216,7 @@ def check_header(header=None, format="ivoa-spectrum-dm-1.2", ignore_simbad=False
     # check for missing keywords
     keywords = get_keywords(format)
     missing_keywords = []
-    for keyword, comment in keywords:
+    for keyword, comment, _ in keywords:
         value = header.get(keyword)
         if value is None:
             if len(missing_keywords) == 0:
@@ -245,47 +257,47 @@ def get_keywords(format):
 
     if format == "simple-spectrum":
         keywords = [
-            ("OBJECT", "Name of observed object"),
-            ("RA_TARG", "[deg] target position"),
-            ("DEC_TARG", "[deg] target position"),
-            ("INSTRUME", "Instrument name"),
-            ("TELESCOP", "Telescope name"),
-            ("DATE-OBS", "Date of observation"),
-            ("TELAPSE", "[s] Total elapsed time (s)"),
-            ("AUTHOR", "Authors of original dataset"),
-            ("VOREF", "URL, DOI, or bibcode of original publication"),
-            ("VOPUB", "Publisher"),  # SIMPLE
-            ("CONTRIB1", "Contributor who generated this header"),
-            ("SPEC_VAL", "[angstrom] Characteristic spectral coordinate"),
-            ("SPEC_BW", "[angstrom] width of spectrum"),
-            ("TDMIN1", "Start in spectral coordinate"),
-            ("TDMAX1", "Stop in spectral coordinate"),
-            ("SPECBAND", "SED.bandpass"),
-            ("APERTURE", "[arcsec] slit width"),
+            ("OBJECT", "Name of observed object", str),
+            ("RA_TARG", "[deg] target position", float),
+            ("DEC_TARG", "[deg] target position", float),
+            ("INSTRUME", "Instrument name", str),
+            ("TELESCOP", "Telescope name", str),
+            ("DATE-OBS", "Date of observation", str),
+            ("TELAPSE", "[s] Total elapsed time (s)", float),
+            ("AUTHOR", "Authors of original dataset", str),
+            ("VOREF", "URL, DOI, or bibcode of original publication", str),
+            ("VOPUB", "Publisher", str),  # SIMPLE
+            ("CONTRIB1", "Contributor who generated this header", str),
+            ("SPEC_VAL", "[angstrom] Characteristic spectral coordinate", float),
+            ("SPEC_BW", "[angstrom] width of spectrum", float),
+            ("TDMIN1", "Start in spectral coordinate", float),
+            ("TDMAX1", "Stop in spectral coordinate", float),
+            ("SPECBAND", "SED.bandpass", str),
+            ("APERTURE", "[arcsec] slit width", float),
         ]
     elif format == "ivoa-spectrum-dm-1.2":
         keywords = [
-            ("OBJECT", "Name of observed object"),
-            ("RA_TARG", "[deg] target position"),
-            ("DEC_TARG", "[deg] target position"),
-            ("INSTRUME", ""),
-            ("TELESCOP", ""),
-            ("OBSERVAT", ""),
-            ("VOCLASS", "Data model name and version"),
-            ("VOPUB", "Publisher"),
-            ("VOREF", "URL, DOI, or bibcode of original publication"),
-            ("TITLE", "Dataset title "),
-            ("AUTHOR", "Authors of the original dataset"),
-            ("CONTRIB1", "Contributor who generated this file"),  # optional
-            ("DATE-OBS", "Date of observation"),  # optional
-            ("TMID", "[d] MJD of exposure mid-point"),
-            ("TELAPSE", "[s] Total elapsed time (s)"),
-            ("SPEC_VAL", "[angstrom] Characteristic spectral coordinate"),
-            ("SPEC_BW", "[angstrom] width of spectrum"),
-            ("TDMIN1", "Start in spectral coordinate"),
-            ("TDMAX1", "Stop in spectral coordinate"),
-            ("SPECBAND", "SED.bandpass"),
-            ("APERTURE", "[arcsec] slit width"),
+            ("OBJECT", "Name of observed object", str),
+            ("RA_TARG", "[deg] target position", float),
+            ("DEC_TARG", "[deg] target position", float),
+            ("INSTRUME", "", str),
+            ("TELESCOP", "", str),
+            ("OBSERVAT", "", str),
+            ("VOCLASS", "Data model name and version", str),
+            ("VOPUB", "Publisher", str),
+            ("VOREF", "URL, DOI, or bibcode of original publication", str),
+            ("TITLE", "Dataset title ", str),
+            ("AUTHOR", "Authors of the original dataset", str),
+            ("CONTRIB1", "Contributor who generated this file", str),  # optional
+            ("DATE-OBS", "Date of observation", str),  # optional
+            ("TMID", "[d] MJD of exposure mid-point", float),
+            ("TELAPSE", "[s] Total elapsed time (s)", float),
+            ("SPEC_VAL", "[angstrom] Characteristic spectral coordinate", float),
+            ("SPEC_BW", "[angstrom] width of spectrum", float),
+            ("TDMIN1", "Start in spectral coordinate", float),
+            ("TDMAX1", "Stop in spectral coordinate", float),
+            ("SPECBAND", "SED.bandpass", str),
+            ("APERTURE", "[arcsec] slit width", float),
         ]
 
     return keywords
@@ -307,7 +319,7 @@ def make_skycoord(header):
     elif header.get("RA") is not None:
         ra = float(header.get("RA"))
 
-    if ra > 360:
+    if ra > 360:  # noqa: PLR2004
         print("RA_TARG does not appear to be in degrees")
         print(f"RA_TARG: {ra}")
         print("RA_TARG should be in degrees")
@@ -325,7 +337,7 @@ def make_skycoord(header):
     elif header.get("DEC") is not None:
         dec = float(header.get("DEC"))
 
-    if dec > 90 or dec < -90:
+    if dec > 90 or dec < -90:  # noqa: PLR2004
         print("DEC_TARG value is out of the expected range.")
         print(f"DEC_TARG: {dec}")
         print("DEC_TARG should be in degrees in the range -90 to 90")
